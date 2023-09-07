@@ -57,26 +57,6 @@ int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
 
   auto node = std::make_shared<SampleNode>();
-
-  /* valid
-  rclcpp::executors::StaticSingleThreadedExecutor executor1;
-  rclcpp::executors::StaticSingleThreadedExecutor executor2;
-
-  executor1.add_callback_group(node->group1, node->get_node_base_interface());
-  executor2.add_callback_group(node->group2, node->get_node_base_interface());
-
-  auto thread1 = std::thread([&]() {
-      executor1.spin();
-  });
-
-  auto thread2 = std::thread([&]() {
-      executor2.spin();
-  });
-
-  thread1.join();
-  thread2.join();
-  */
-
   std::vector<std::thread> threads;
   std::vector<rclcpp::executors::SingleThreadedExecutor::SharedPtr> executors;
 
