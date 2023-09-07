@@ -1,7 +1,9 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <thread>
 #include <vector>
+#include <sys/syscall.h>
 #include "rclcpp/rclcpp.hpp"
 
 #include "interfaces/msg/dynamic_size_array.hpp"
@@ -15,10 +17,16 @@ public:
   SampleNode() : Node("sample_node"), count_(0) {
     publisher_ = this->create_publisher<interfaces::msg::DynamicSizeArray>("topic_out", 1);
 
-    timer_ = this->create_wall_timer(3000ms, std::bind(&SampleNode::timer_callback, this));
+    group1_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    group2_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    timer_ = this->create_wall_timer(3000ms, std::bind(&SampleNode::timer_callback, this), group1_);
+
+    rclcpp::SubscriptionOptions sub_options;
+    sub_options.callback_group = group2_;
 
     subscription_ = this->create_subscription<interfaces::msg::DynamicSizeArray>(
-      "topic_in", 1, std::bind(&SampleNode::subscription_callback, this, std::placeholders::_1));
+      "topic_in", 1, std::bind(&SampleNode::subscription_callback, this, std::placeholders::_1), sub_options);
   }
 
 private:
@@ -37,6 +45,11 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<interfaces::msg::DynamicSizeArray>::SharedPtr publisher_;
   rclcpp::Subscription<interfaces::msg::DynamicSizeArray>::SharedPtr subscription_;
+
+  // Need to be stored not to be destructed
+  rclcpp::CallbackGroup::SharedPtr group1_;
+  rclcpp::CallbackGroup::SharedPtr group2_;
+
   size_t count_;
 };
 
@@ -44,10 +57,46 @@ int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
 
   auto node = std::make_shared<SampleNode>();
-  auto executor = std::make_shared<rclcpp::executors::MultiThreadedExecutor>();
 
-  executor->add_node(node);
-  executor->spin();
+  /* valid
+  rclcpp::executors::StaticSingleThreadedExecutor executor1;
+  rclcpp::executors::StaticSingleThreadedExecutor executor2;
+
+  executor1.add_callback_group(node->group1, node->get_node_base_interface());
+  executor2.add_callback_group(node->group2, node->get_node_base_interface());
+
+  auto thread1 = std::thread([&]() {
+      executor1.spin();
+  });
+
+  auto thread2 = std::thread([&]() {
+      executor2.spin();
+  });
+
+  thread1.join();
+  thread2.join();
+  */
+
+  std::vector<std::thread> threads;
+  std::vector<rclcpp::executors::SingleThreadedExecutor::SharedPtr> executors;
+
+  node->for_each_callback_group([&node, &executors](rclcpp::CallbackGroup::SharedPtr group) {
+      auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+      executor->add_callback_group(group, node->get_node_base_interface());
+      executors.push_back(executor);
+  });
+
+  for (auto &executor : executors) {
+    threads.emplace_back([&executor]() {
+        auto tid = syscall(SYS_gettid);
+        std::cout << "executor thread (tid=" << tid << ")" << std::endl;
+        executor->spin();
+    });
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
 
   rclcpp::shutdown();
   return 0;
