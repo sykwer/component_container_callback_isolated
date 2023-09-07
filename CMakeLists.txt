@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 
 find_package(interfaces REQUIRED)
@@ -26,7 +27,10 @@ endif()
 add_executable(sample_node src/sample_node.cpp)
 ament_target_dependencies(sample_node rclcpp interfaces)
 
-install(TARGETS sample_node
+add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
+ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components)
+
+install(TARGETS sample_node component_container_callback_isolated
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
