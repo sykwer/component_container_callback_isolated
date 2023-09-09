@@ -24,13 +24,15 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-add_executable(sample_node src/sample_node.cpp)
-ament_target_dependencies(sample_node rclcpp interfaces)
+add_library(sample_node SHARED src/sample_node.cpp)
+target_compile_definitions(sample_node PRIVATE "COMPOSITION_BUILDING_DLL")
+ament_target_dependencies(sample_node rclcpp rclcpp_components interfaces)
+rclcpp_components_register_nodes(sample_node "SampleNode")
 
 add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
 ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components)
 
 install(TARGETS sample_node component_container_callback_isolated
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib)
 
 ament_package()

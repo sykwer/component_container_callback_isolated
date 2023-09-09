@@ -91,7 +91,7 @@ void ComponentManagerCallbackIsolated::cancel_executor(ExecutorWrapper &executor
   executor_wrapper.thread.join();
 }
 
-} // rclcpp_components
+} // namespace rclcpp_components
 
 int main(int argc, char *argv[]) {
   rclcpp::init(argc, argv);
