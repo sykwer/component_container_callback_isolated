@@ -7,8 +7,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
-
-#include "interfaces/msg/dynamic_size_array.hpp"
+#include "std_msgs/msg/int32.hpp"
 
 using namespace std::chrono_literals;
 
@@ -17,8 +16,9 @@ const long long MESSAGE_SIZE = 1024;
 class SampleNode : public rclcpp::Node {
 public:
   explicit SampleNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
-    : Node("sample_node", options), count_(0) {
-    publisher_ = this->create_publisher<interfaces::msg::DynamicSizeArray>("topic_out", 1);
+    : Node("sample_node", options), count_(0), count2_(0) {
+    publisher_ = this->create_publisher<std_msgs::msg::Int32>("topic_out", 1);
+    publisher2_ = this->create_publisher<std_msgs::msg::Int32>("topic_out2", 1);
 
     group1_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     group2_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -30,38 +30,37 @@ public:
     rclcpp::SubscriptionOptions sub_options;
     sub_options.callback_group = group3_;
 
-    subscription_ = this->create_subscription<interfaces::msg::DynamicSizeArray>(
+    subscription_ = this->create_subscription<std_msgs::msg::Int32>(
       "topic_in", 1, std::bind(&SampleNode::subscription_callback, this, std::placeholders::_1), sub_options);
   }
 
 private:
   void timer_callback() {
     long tid = syscall(SYS_gettid);
-    auto message = interfaces::msg::DynamicSizeArray();
-    message.id = count_++;
-    message.data.resize(MESSAGE_SIZE);
-    RCLCPP_INFO(this->get_logger(), "Publishing Message ID (timer_callback tid=%ld): '%ld'", tid, message.id);
+    auto message = std_msgs::msg::Int32();
+    message.data = count_++;
+    RCLCPP_INFO(this->get_logger(), "Publishing Message ID (timer_callback tid=%ld): '%d'", tid, message.data);
     publisher_->publish(std::move(message));
   }
 
   void timer_callback2() {
     long tid = syscall(SYS_gettid);
-    auto message = interfaces::msg::DynamicSizeArray();
-    message.id = count_++;
-    message.data.resize(MESSAGE_SIZE);
-    RCLCPP_INFO(this->get_logger(), "Publishing Message ID (timer_callback2 tid=%ld): '%ld'", tid, message.id);
-    publisher_->publish(std::move(message));
+    auto message = std_msgs::msg::Int32();
+    message.data = count2_++;
+    RCLCPP_INFO(this->get_logger(), "Publishing Message ID (timer_callback2 tid=%ld): '%d'", tid, message.data);
+    publisher2_->publish(std::move(message));
   }
 
-  void subscription_callback(const interfaces::msg::DynamicSizeArray::SharedPtr msg) const {
+  void subscription_callback(const std_msgs::msg::Int32::SharedPtr msg) const {
     long tid = syscall(SYS_gettid);
-    RCLCPP_INFO(this->get_logger(), "I heard message ID (subscription_callback tid=%ld): '%ld'", tid, msg->id);
+    RCLCPP_INFO(this->get_logger(), "I heard message ID (subscription_callback tid=%ld): '%d'", tid, msg->data);
   }
 
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::TimerBase::SharedPtr timer2_;
-  rclcpp::Publisher<interfaces::msg::DynamicSizeArray>::SharedPtr publisher_;
-  rclcpp::Subscription<interfaces::msg::DynamicSizeArray>::SharedPtr subscription_;
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr publisher_;
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr publisher2_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr subscription_;
 
   // Need to be stored not to be destructed
   rclcpp::CallbackGroup::SharedPtr group1_;
@@ -69,6 +68,7 @@ private:
   rclcpp::CallbackGroup::SharedPtr group3_;
 
   size_t count_;
+  size_t count2_;
 };
 
 RCLCPP_COMPONENTS_REGISTER_NODE(SampleNode)

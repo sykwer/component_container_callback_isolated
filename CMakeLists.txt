@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(sample_node)
+project(component_container_callback_isolated)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,8 +10,6 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
-
-find_package(interfaces REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -26,13 +24,12 @@ endif()
 
 add_library(sample_node SHARED src/sample_node.cpp)
 target_compile_definitions(sample_node PRIVATE "COMPOSITION_BUILDING_DLL")
-ament_target_dependencies(sample_node rclcpp rclcpp_components interfaces)
+ament_target_dependencies(sample_node rclcpp rclcpp_components std_msgs)
 rclcpp_components_register_nodes(sample_node "SampleNode")
 
 add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
 ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components)
 
-install(TARGETS sample_node component_container_callback_isolated
-  DESTINATION lib)
+install(TARGETS sample_node component_container_callback_isolated DESTINATION lib)
 
 ament_package()
