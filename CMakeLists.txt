@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(component_container_callback_isolated)
+project(rclcpp_component_container_callback_isolated)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -30,6 +30,8 @@ rclcpp_components_register_nodes(sample_node "SampleNode")
 add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
 ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components)
 
-install(TARGETS sample_node component_container_callback_isolated DESTINATION lib)
+install(TARGETS component_container_callback_isolated DESTINATION lib/${PROJECT_NAME})
+install(TARGETS sample_node DESTINATION lib)
+install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
 ament_package()
