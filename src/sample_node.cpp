@@ -1,6 +1,8 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <string>
+#include <sstream>
 #include <thread>
 #include <vector>
 #include <sys/syscall.h>
@@ -9,6 +11,8 @@
 #include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/int32.hpp"
 
+#include "thread_config_msgs/msg/callback_group_info.hpp"
+
 using namespace std::chrono_literals;
 
 const long long MESSAGE_SIZE = 1024;
@@ -16,7 +20,7 @@ const long long MESSAGE_SIZE = 1024;
 class SampleNode : public rclcpp::Node {
 public:
   explicit SampleNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
-    : Node("sample_node", options), count_(0), count2_(0) {
+    : Node("sample_node", "/sample_space/sample_subspace", options), count_(0), count2_(0) {
     publisher_ = this->create_publisher<std_msgs::msg::Int32>("topic_out", 1);
     publisher2_ = this->create_publisher<std_msgs::msg::Int32>("topic_out2", 1);
 
@@ -73,24 +77,68 @@ private:
 
 RCLCPP_COMPONENTS_REGISTER_NODE(SampleNode)
 
-/*
+std::string create_callback_group_id(const rclcpp::CallbackGroup::SharedPtr &group, const rclcpp::Node::SharedPtr &node) {
+  std::stringstream ss;
+
+  ss << node->get_namespace() << "/" << node->get_name() << "@";
+
+  auto sub_func = [&ss](const rclcpp::SubscriptionBase::SharedPtr &sub) {
+    ss << "Subscription(" << sub->get_topic_name() << ")@";
+  };
+
+  auto service_func = [&ss](const rclcpp::ServiceBase::SharedPtr &service) {
+    ss << "Service(" << service->get_service_name() << ")@";
+  };
+
+  auto client_func = [&ss](const rclcpp::ClientBase::SharedPtr &client) {
+    ss << "Client(" << client->get_service_name() << ")@";
+  };
+
+  auto timer_func = [&ss](const rclcpp::TimerBase::SharedPtr &timer) {
+    std::shared_ptr<const rcl_timer_t> timer_handle = timer->get_timer_handle();
+    int64_t period;
+    rcl_ret_t ret = rcl_timer_get_period(timer_handle.get(), &period);
+    (void) ret;
+
+    ss << "Timer(" << period << ")@";
+  };
+
+  auto waitable_func = [&ss](const rclcpp::Waitable::SharedPtr &waitable) {
+    (void) waitable;
+    ss << "Waitable" << "@";
+  };
+
+  group->collect_all_ptrs(sub_func, service_func, client_func, timer_func, waitable_func);
+
+  std::string ret = ss.str();
+  ret.pop_back();
+
+  return ret;
+}
+
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
 
   auto node = std::make_shared<SampleNode>();
+
   std::vector<std::thread> threads;
   std::vector<rclcpp::executors::SingleThreadedExecutor::SharedPtr> executors;
+  std::vector<std::string> callback_group_ids;
 
-  node->for_each_callback_group([&node, &executors](rclcpp::CallbackGroup::SharedPtr group) {
+  node->for_each_callback_group([&node, &executors, &callback_group_ids](rclcpp::CallbackGroup::SharedPtr group) {
       auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
       executor->add_callback_group(group, node->get_node_base_interface());
       executors.push_back(executor);
+      callback_group_ids.push_back(create_callback_group_id(group, node));
   });
 
-  for (auto &executor : executors) {
-    threads.emplace_back([&executor]() {
+  for (size_t i = 0; i < executors.size(); i++) {
+    auto &executor = executors[i];
+    auto &callback_group_id = callback_group_ids[i];
+
+    threads.emplace_back([&executor, &callback_group_id, &node]() {
         auto tid = syscall(SYS_gettid);
-        std::cout << "executor thread (tid=" << tid << ")" << std::endl;
+        std::cout << "tid=" << tid << " | " << callback_group_id << std::endl;
         executor->spin();
     });
   }
@@ -102,4 +150,3 @@ int main(int argc, char * argv[]) {
   rclcpp::shutdown();
   return 0;
 }
-*/

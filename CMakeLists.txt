@@ -11,6 +11,8 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 
+find_package(thread_config_msgs REQUIRED)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -24,13 +26,16 @@ endif()
 
 add_library(sample_node SHARED src/sample_node.cpp)
 target_compile_definitions(sample_node PRIVATE "COMPOSITION_BUILDING_DLL")
-ament_target_dependencies(sample_node rclcpp rclcpp_components std_msgs)
+ament_target_dependencies(sample_node rclcpp rclcpp_components std_msgs thread_config_msgs)
 rclcpp_components_register_nodes(sample_node "SampleNode")
+
+add_executable(sample_node2 src/sample_node.cpp)
+ament_target_dependencies(sample_node2 rclcpp rclcpp_components std_msgs thread_config_msgs)
 
 add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
 ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components)
 
-install(TARGETS component_container_callback_isolated DESTINATION lib/${PROJECT_NAME})
+install(TARGETS sample_node2 component_container_callback_isolated DESTINATION lib/${PROJECT_NAME})
 install(TARGETS sample_node DESTINATION lib)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
