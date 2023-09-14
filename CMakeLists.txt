@@ -25,15 +25,21 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-add_library(sample_node SHARED src/sample_node.cpp)
+add_library(sample_node SHARED src/sample_node.cpp src/static_callback_isolated_executor.cpp)
 target_compile_definitions(sample_node PRIVATE "COMPOSITION_BUILDING_DLL")
 ament_target_dependencies(sample_node rclcpp rclcpp_components std_msgs thread_config_msgs ros2_thread_configurator)
-target_include_directories(sample_node PRIVATE ${ros2_thread_configurator_INCLUDE_DIRS})
+target_include_directories(sample_node PRIVATE
+  ${ros2_thread_configurator_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 rclcpp_components_register_nodes(sample_node "SampleNode")
 
-add_executable(sample_node2 src/sample_node.cpp)
+add_executable(sample_node2 src/sample_node.cpp src/static_callback_isolated_executor.cpp)
 ament_target_dependencies(sample_node2 rclcpp rclcpp_components std_msgs thread_config_msgs ros2_thread_configurator)
-target_include_directories(sample_node2 PRIVATE ${ros2_thread_configurator_INCLUDE_DIRS})
+target_include_directories(sample_node2 PRIVATE
+  ${ros2_thread_configurator_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
 ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components)
