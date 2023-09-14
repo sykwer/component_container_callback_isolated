@@ -116,27 +116,35 @@ std::string create_callback_group_id(const rclcpp::CallbackGroup::SharedPtr &gro
   return ret;
 }
 
-int main(int argc, char * argv[]) {
-  rclcpp::init(argc, argv);
+class StaticCallbackIsolatedExecutor {
+public:
+  void add_node(const rclcpp::Node::SharedPtr &node);
+  void spin();
+private:
+  rclcpp::Node::SharedPtr node_;
+};
 
-  auto node = std::make_shared<SampleNode>();
+void StaticCallbackIsolatedExecutor::add_node(const rclcpp::Node::SharedPtr &node) {
+  node_ = node;
+}
 
+void StaticCallbackIsolatedExecutor::spin() {
   std::vector<std::thread> threads;
   std::vector<rclcpp::executors::SingleThreadedExecutor::SharedPtr> executors;
   std::vector<std::string> callback_group_ids;
 
-  node->for_each_callback_group([&node, &executors, &callback_group_ids](rclcpp::CallbackGroup::SharedPtr group) {
+  node_->for_each_callback_group([this, &executors, &callback_group_ids](rclcpp::CallbackGroup::SharedPtr group) {
       auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
-      executor->add_callback_group(group, node->get_node_base_interface());
+      executor->add_callback_group(group, node_->get_node_base_interface());
       executors.push_back(executor);
-      callback_group_ids.push_back(create_callback_group_id(group, node));
+      callback_group_ids.push_back(create_callback_group_id(group, node_));
   });
 
   for (size_t i = 0; i < executors.size(); i++) {
     auto &executor = executors[i];
     auto &callback_group_id = callback_group_ids[i];
 
-    threads.emplace_back([&executor, &callback_group_id, &node]() {
+    threads.emplace_back([&executor, &callback_group_id]() {
         auto tid = syscall(SYS_gettid);
         std::cout << "tid=" << tid << " | " << callback_group_id << std::endl;
         executor->spin();
@@ -146,6 +154,16 @@ int main(int argc, char * argv[]) {
   for (auto &t : threads) {
     t.join();
   }
+}
+
+int main(int argc, char * argv[]) {
+  rclcpp::init(argc, argv);
+
+  auto node = std::make_shared<SampleNode>();
+  auto executor = std::make_shared<StaticCallbackIsolatedExecutor>();
+
+  executor->add_node(node);
+  executor->spin();
 
   rclcpp::shutdown();
   return 0;
