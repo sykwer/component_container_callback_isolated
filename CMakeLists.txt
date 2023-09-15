@@ -27,7 +27,7 @@ endif()
 
 add_library(sample_node SHARED src/sample_node.cpp src/static_callback_isolated_executor.cpp)
 target_compile_definitions(sample_node PRIVATE "COMPOSITION_BUILDING_DLL")
-ament_target_dependencies(sample_node rclcpp rclcpp_components std_msgs thread_config_msgs ros2_thread_configurator)
+ament_target_dependencies(sample_node rclcpp rclcpp_components std_msgs ros2_thread_configurator)
 target_include_directories(sample_node PRIVATE
   ${ros2_thread_configurator_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -35,7 +35,7 @@ target_include_directories(sample_node PRIVATE
 rclcpp_components_register_nodes(sample_node "SampleNode")
 
 add_executable(sample_node2 src/sample_node.cpp src/static_callback_isolated_executor.cpp)
-ament_target_dependencies(sample_node2 rclcpp rclcpp_components std_msgs thread_config_msgs ros2_thread_configurator)
+ament_target_dependencies(sample_node2 rclcpp rclcpp_components std_msgs ros2_thread_configurator)
 target_include_directories(sample_node2 PRIVATE
   ${ros2_thread_configurator_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/include

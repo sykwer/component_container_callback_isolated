@@ -5,10 +5,9 @@
 #include <sys/syscall.h>
 
 #include "rclcpp/rclcpp.hpp"
+#include "ros2_thread_configurator.hpp"
 
 #include "static_callback_isolated_executor.hpp"
-#include "thread_config_msgs/msg/callback_group_info.hpp"
-#include "ros2_thread_configurator.hpp"
 
 void StaticCallbackIsolatedExecutor::add_node(const rclcpp::Node::SharedPtr &node) {
   node_ = node;
@@ -26,13 +25,15 @@ void StaticCallbackIsolatedExecutor::spin() {
       callback_group_ids.push_back(ros2_thread_configurator::create_callback_group_id(group, node_));
   });
 
+  auto client_publisher = ros2_thread_configurator::create_client_publisher();
+
   for (size_t i = 0; i < executors.size(); i++) {
     auto &executor = executors[i];
     auto &callback_group_id = callback_group_ids[i];
 
-    threads.emplace_back([&executor, &callback_group_id]() {
+    threads.emplace_back([&executor, &callback_group_id, &client_publisher]() {
         auto tid = syscall(SYS_gettid);
-        std::cout << "tid=" << tid << " | " << callback_group_id << std::endl;
+        ros2_thread_configurator::publish_callback_group_info(client_publisher, tid, callback_group_id);
         executor->spin();
     });
   }
