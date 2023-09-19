@@ -1,13 +1,12 @@
 #include <chrono>
-#include <functional>
 #include <memory>
-#include <thread>
-#include <vector>
 #include <sys/syscall.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/int32.hpp"
+
+#include "static_callback_isolated_executor.hpp"
 
 using namespace std::chrono_literals;
 
@@ -16,7 +15,7 @@ const long long MESSAGE_SIZE = 1024;
 class SampleNode : public rclcpp::Node {
 public:
   explicit SampleNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
-    : Node("sample_node", options), count_(0), count2_(0) {
+    : Node("sample_node", "/sample_space/sample_subspace", options), count_(0), count2_(0) {
     publisher_ = this->create_publisher<std_msgs::msg::Int32>("topic_out", 1);
     publisher2_ = this->create_publisher<std_msgs::msg::Int32>("topic_out2", 1);
 
@@ -73,33 +72,15 @@ private:
 
 RCLCPP_COMPONENTS_REGISTER_NODE(SampleNode)
 
-/*
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
 
   auto node = std::make_shared<SampleNode>();
-  std::vector<std::thread> threads;
-  std::vector<rclcpp::executors::SingleThreadedExecutor::SharedPtr> executors;
+  auto executor = std::make_shared<StaticCallbackIsolatedExecutor>();
 
-  node->for_each_callback_group([&node, &executors](rclcpp::CallbackGroup::SharedPtr group) {
-      auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
-      executor->add_callback_group(group, node->get_node_base_interface());
-      executors.push_back(executor);
-  });
-
-  for (auto &executor : executors) {
-    threads.emplace_back([&executor]() {
-        auto tid = syscall(SYS_gettid);
-        std::cout << "executor thread (tid=" << tid << ")" << std::endl;
-        executor->spin();
-    });
-  }
-
-  for (auto &t : threads) {
-    t.join();
-  }
+  executor->add_node(node);
+  executor->spin();
 
   rclcpp::shutdown();
   return 0;
 }
-*/
