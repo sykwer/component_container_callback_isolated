@@ -2,11 +2,20 @@
 A component container that assigns a dedicated thread for each callback group.
 
 ## Build and Install
+`component_container_calblack_isolated` depends on https://github.com/sykwer/ros2_thread_configurator.
 ```
-$ mkdir -p /path/to/project/directory
-$ cd /path/to/project/directory
-$ git clone https://github.com/sykwer/component_container_callback_isolated.git src/
+$ mkdir -p /path/to/ros2_thread_configurator_ws
+$ cd /path/to/ros2_thread_configurator_ws
+$ git clone https://github.com/sykwer/ros2_thread_configurator.git src/
 $ source /opt/ros/humble/setup.bash
+$ colcon build
+```
+After `ros2_thread_configurator` is installed, we can build `component_container_callback_isolated`.
+```
+$ mkdir -p /path/to/component_container_callback_isolated_ws
+$ cd /path/to/component_container_callback_isolated_ws
+$ git clone https://github.com/sykwer/component_container_callback_isolated.git src/
+$ source /path/to/ros2_thread_configurator_ws/install/setup.bash
 $ colcon build
 $ source install/setup.bash
 ```
