@@ -5,6 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/component_manager.hpp"
+#include "ros2_thread_configurator.hpp"
 
 namespace rclcpp_components
 {
@@ -32,6 +33,7 @@ protected:
 
 private:
   void cancel_executor(ExecutorWrapper &executor_wrapper);
+  bool is_clock_callback_group(rclcpp::CallbackGroup::SharedPtr group);
 
   std::unordered_map<uint64_t, std::list<ExecutorWrapper>> node_id_to_executor_wrappers_;
 };
@@ -50,10 +52,55 @@ ComponentManagerCallbackIsolated::~ComponentManagerCallbackIsolated() {
   node_wrappers_.clear();
 }
 
+bool ComponentManagerCallbackIsolated::is_clock_callback_group(rclcpp::CallbackGroup::SharedPtr group) {
+  int sub_num = 0;
+  int service_num = 0;
+  int client_num = 0;
+  int timer_num = 0;
+
+  bool clock_sub_exists = false;
+
+  auto sub_func = [&](const rclcpp::SubscriptionBase::SharedPtr &sub) {
+    sub_num++;
+    if (strcmp(sub->get_topic_name(), "/clock") == 0) clock_sub_exists = true;
+  };
+
+  auto service_func = [&](const rclcpp::ServiceBase::SharedPtr &service) {
+    (void) service;
+    service_num++;
+  };
+
+  auto client_func = [&](const rclcpp::ClientBase::SharedPtr &client) {
+    (void) client;
+    client_num++;
+  };
+
+  auto timer_func = [&](const rclcpp::TimerBase::SharedPtr &timer) {
+    (void) timer;
+    timer_num++;
+  };
+
+  auto waitable_func = [](const rclcpp::Waitable::SharedPtr &waitable) {
+    (void) waitable;
+  };
+
+  group->collect_all_ptrs(sub_func, service_func, client_func, timer_func, waitable_func);
+
+  return sub_num == 1 && clock_sub_exists && service_num == 0 && client_num == 0 && timer_num == 0;
+}
+
 void ComponentManagerCallbackIsolated::add_node_to_executor(uint64_t node_id) {
   auto node = node_wrappers_[node_id].get_node_base_interface();
 
   node->for_each_callback_group([node_id, &node, this](rclcpp::CallbackGroup::SharedPtr callback_group) {
+      std::atomic_bool &has_executor = callback_group->get_associated_with_executor_atomic();
+
+      if (is_clock_callback_group(callback_group) /* workaround */ || has_executor.load()) {
+        std::string id = ros2_thread_configurator::create_callback_group_id(callback_group, node);
+        RCLCPP_WARN(this->get_logger(), "A callback group (%s) has already been added to an executor. skip.", id.c_str());
+        return;
+      }
+
       auto executor = std::make_shared<rclcpp::executors::StaticSingleThreadedExecutor>();
       executor->add_callback_group(callback_group, node);
 
