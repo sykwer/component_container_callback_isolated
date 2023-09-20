@@ -2,6 +2,7 @@
 #include <thread>
 #include <unordered_map>
 #include <list>
+#include <sys/syscall.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/component_manager.hpp"
@@ -25,6 +26,11 @@ class ComponentManagerCallbackIsolated : public rclcpp_components::ComponentMana
   };
 
 public:
+  template<typename... Args>
+  ComponentManagerCallbackIsolated(Args&&... args) : rclcpp_components::ComponentManager(std::forward<Args>(args)...) {
+    client_publisher_ = ros2_thread_configurator::create_client_publisher();
+  }
+
   ~ComponentManagerCallbackIsolated();
 
 protected:
@@ -36,6 +42,7 @@ private:
   bool is_clock_callback_group(rclcpp::CallbackGroup::SharedPtr group);
 
   std::unordered_map<uint64_t, std::list<ExecutorWrapper>> node_id_to_executor_wrappers_;
+  rclcpp::Publisher<thread_config_msgs::msg::CallbackGroupInfo>::SharedPtr client_publisher_;
 };
 
 ComponentManagerCallbackIsolated::~ComponentManagerCallbackIsolated() {
@@ -93,11 +100,12 @@ void ComponentManagerCallbackIsolated::add_node_to_executor(uint64_t node_id) {
   auto node = node_wrappers_[node_id].get_node_base_interface();
 
   node->for_each_callback_group([node_id, &node, this](rclcpp::CallbackGroup::SharedPtr callback_group) {
+      std::string group_id = ros2_thread_configurator::create_callback_group_id(callback_group, node);
       std::atomic_bool &has_executor = callback_group->get_associated_with_executor_atomic();
 
       if (is_clock_callback_group(callback_group) /* workaround */ || has_executor.load()) {
-        std::string id = ros2_thread_configurator::create_callback_group_id(callback_group, node);
-        RCLCPP_WARN(this->get_logger(), "A callback group (%s) has already been added to an executor. skip.", id.c_str());
+        RCLCPP_WARN(this->get_logger(),
+            "A callback group (%s) has already been added to an executor. skip.", group_id.c_str());
         return;
       }
 
@@ -108,7 +116,10 @@ void ComponentManagerCallbackIsolated::add_node_to_executor(uint64_t node_id) {
       it = node_id_to_executor_wrappers_[node_id].emplace(it, executor);
       auto &executor_wrapper = *it;
 
-      executor_wrapper.thread = std::thread([&executor_wrapper]() {
+      executor_wrapper.thread = std::thread([&executor_wrapper, group_id, this]() {
+          auto tid = syscall(SYS_gettid);
+          ros2_thread_configurator::publish_callback_group_info(this->client_publisher_, tid, group_id);
+
           executor_wrapper.thread_initialized = true;
           executor_wrapper.executor->spin();
       });
