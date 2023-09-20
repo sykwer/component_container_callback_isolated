@@ -19,6 +19,12 @@ void StaticCallbackIsolatedExecutor::spin() {
   std::vector<std::string> callback_group_ids;
 
   node_->for_each_callback_group([this, &executors, &callback_group_ids](rclcpp::CallbackGroup::SharedPtr group) {
+      if (group->get_associated_with_executor_atomic().load()) {
+        std::string id = ros2_thread_configurator::create_callback_group_id(group, node_);
+        RCLCPP_WARN(node_->get_logger(), "A callback group (%s) has been already added to an executor. skip.", id.c_str());
+        return;
+      }
+
       auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
       executor->add_callback_group(group, node_->get_node_base_interface());
       executors.push_back(executor);
