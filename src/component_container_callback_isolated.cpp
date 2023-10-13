@@ -14,13 +14,13 @@ namespace rclcpp_components
 class ComponentManagerCallbackIsolated : public rclcpp_components::ComponentManager {
 
   struct ExecutorWrapper {
-    explicit ExecutorWrapper(std::shared_ptr<rclcpp::executors::StaticSingleThreadedExecutor> executor)
+    explicit ExecutorWrapper(std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor)
       : executor(executor), thread_initialized(false) {}
 
     ExecutorWrapper(const ExecutorWrapper&) = delete;
     ExecutorWrapper& operator=(const ExecutorWrapper&) = delete;
 
-    std::shared_ptr<rclcpp::executors::StaticSingleThreadedExecutor> executor;
+    std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor;
     std::thread thread;
     std::atomic_bool thread_initialized;
   };
@@ -109,7 +109,7 @@ void ComponentManagerCallbackIsolated::add_node_to_executor(uint64_t node_id) {
         return;
       }
 
-      auto executor = std::make_shared<rclcpp::executors::StaticSingleThreadedExecutor>();
+      auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
       executor->add_callback_group(callback_group, node);
 
       auto it = node_id_to_executor_wrappers_[node_id].begin();
@@ -155,7 +155,7 @@ void ComponentManagerCallbackIsolated::cancel_executor(ExecutorWrapper &executor
 int main(int argc, char *argv[]) {
   rclcpp::init(argc, argv);
 
-  auto executor = std::make_shared<rclcpp::executors::StaticSingleThreadedExecutor>();
+  auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
   auto node = std::make_shared<rclcpp_components::ComponentManagerCallbackIsolated>();
 
   executor->add_node(node);
