@@ -118,7 +118,12 @@ void ComponentManagerCallbackIsolated::add_node_to_executor(uint64_t node_id) {
 
       executor_wrapper.thread = std::thread([&executor_wrapper, group_id, this]() {
           auto tid = syscall(SYS_gettid);
-          ros2_thread_configurator::publish_callback_group_info(this->client_publisher_, tid, group_id);
+
+          // dirty
+          for (int i = 0; i < 3; i++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            ros2_thread_configurator::publish_callback_group_info(this->client_publisher_, tid, group_id);
+          }
 
           executor_wrapper.thread_initialized = true;
           executor_wrapper.executor->spin();

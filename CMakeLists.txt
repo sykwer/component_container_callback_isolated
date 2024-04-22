@@ -45,6 +45,9 @@ target_include_directories(sample_node2 PRIVATE
 add_executable(component_container_callback_isolated src/component_container_callback_isolated.cpp)
 ament_target_dependencies(component_container_callback_isolated rclcpp rclcpp_components ros2_thread_configurator)
 
+add_executable(component_container_single src/component_container_single.cpp)
+ament_target_dependencies(component_container_single rclcpp rclcpp_components ros2_thread_configurator)
+
 add_library(static_callback_isolated_executor SHARED src/static_callback_isolated_executor.cpp)
 ament_target_dependencies(static_callback_isolated_executor rclcpp ros2_thread_configurator)
 target_include_directories(static_callback_isolated_executor PUBLIC
@@ -63,7 +66,7 @@ install(
   DESTINATION include
 )
 
-install(TARGETS sample_node2 component_container_callback_isolated DESTINATION lib/${PROJECT_NAME})
+install(TARGETS sample_node2 component_container_callback_isolated component_container_single DESTINATION lib/${PROJECT_NAME})
 install(TARGETS sample_node DESTINATION lib)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
